@@ -36,7 +36,8 @@ VulkanDevice::~VulkanDevice() {
 
 void VulkanDevice::createInstance() {
     if (enableValidationLayers && !checkValidationLayerSupport()) {
-        throw std::runtime_error("validation layers requested, but not available!");
+        enableValidationLayers = false;
+        std::cout << "validation layers requested, but not available!" << std::endl;
     }
     
     VkApplicationInfo appInfo = {};

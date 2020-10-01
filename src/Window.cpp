@@ -19,9 +19,7 @@ glm::vec2 Window::getMousePosition()
 	double x, y;
 	glfwGetCursorPos(window, &x, &y);
 
-	glfwGetWindowSize(window, &windowedWidth, &windowedHeight);
-
-	return glm::vec2(static_cast<float>(x/windowedWidth), static_cast<float>(y/windowedHeight));
+	return glm::vec2(static_cast<float>(x), static_cast<float>(y));
 }
 
 void Window::enterFullscreen()

@@ -26,7 +26,7 @@ const std::string GROUND_MASK_TEXTURE_PATH = "textures/terrain_mgao.png";
 const std::string GROUND_NORMAL_MAP_PATH = "textures/terrain_normal.jpeg";
 
 const float CAMERA_MOVE_SPEED = 3.0f;
-const float CAMERA_ROTATE_SPEED = 30.0f;
+const float CAMERA_ROTATE_SPEED = 0.03f;
 const float CAMERA_TRACKING_SPEED_INCREASE = 0.5f;
 const float CAMERA_TRACKING_STEP_SIZE = 0.0004f;
 
