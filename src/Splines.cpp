@@ -1,5 +1,6 @@
 #include "Splines.hpp"
 
+/** Hermite spline interpolation between the points p1 and p2 with tangents m1 and m2 */ 
 glm::vec3 Splines::hermite(glm::vec3 p1, glm::vec3 p2, glm::vec3 m1, glm::vec3 m2, float t) {
     float t2 = t * t;
     float t3 = t2 * t;
@@ -20,6 +21,7 @@ static glm::vec3 kochanekBartelsOutgoingTangent(glm::vec3 p1, glm::vec3 p2, glm:
     return ((1 - t) * (1 + b) * (1 + c) * 0.5f) * (p2 - p1) + ((1 - t) * (1 - b) * (1 - c) * 0.5f) * (p3 - p2);
 }
 
+/** Kochanek-Bartels interpolation with the given points at t and the given tension (t), bias (b) and continuity (c) parameters */
 glm::vec3 Splines::kochanekBartels(
     glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 p4,
     float t1, float t2, float b1, float b2, float c1, float c2, float t)
@@ -30,6 +32,7 @@ glm::vec3 Splines::kochanekBartels(
     return hermite(p2, p3, m1, m2, t);
 }
 
+/** Catmull-Rom interpolation with the given points at t (Kochanek-Bartels with all parameters set to zero) */
 glm::vec3 Splines::catmullRom(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 p4, float t) {
     return kochanekBartels(p1, p2, p3, p4, 0, 0, 0, 0, 0, 0, t);
 }

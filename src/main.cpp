@@ -11,8 +11,6 @@
 #include "Window.hpp"
 #include "Splines.hpp"
 
-const std::string CHALET_PATH = "models/chalet.obj";
-const std::string SQRL_PATH = "models/sqrl.fbx";
 const std::string MECH_PATH = "models/model.dae";
 const std::string CUBE_PATH = "models/cube.obj";
 const std::string TERRAIN_PATH = "models/terrain.obj";
@@ -136,6 +134,7 @@ int main() {
     auto characterUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
     auto skyboxUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 1, false);
     auto groundUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
+    auto cubeUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
     
     auto skinnedPipeline = PipelineSettingsBuilder()
         .vertexShader("shaders/skinning.vert.spv")
@@ -160,10 +159,19 @@ int main() {
     auto character = ModelLoader::fromFile(MECH_PATH, renderer->getDevice(), staticPipeline, std::move(characterUniforms));
     auto skybox = ModelLoader::fromFile(CUBE_PATH, renderer->getDevice(), skyboxPipeline, std::move(skyboxUniforms));
     auto ground = ModelLoader::fromFile(TERRAIN_PATH, renderer->getDevice(), staticPipeline, std::move(groundUniforms));
+    auto cube = ModelLoader::fromFile(CUBE_PATH, renderer->getDevice(), staticPipeline, std::move(cubeUniforms));
     
     character->getUniforms().addTexture(2, std::move(colorTexture));
     character->getUniforms().addTexture(3, std::move(maskTexture));
     character->getUniforms().addTexture(4, std::move(normalMapTexture));
+
+    colorTexture = std::make_shared<VulkanTexture>(TEXTURE_PATH, renderer->getDevice(), true);
+    maskTexture = std::make_shared<VulkanTexture>(MASK_TEXTURE_PATH, renderer->getDevice(), false);
+    normalMapTexture = std::make_shared<VulkanTexture>(NORMAL_MAP_PATH, renderer->getDevice(), false);
+
+    cube->getUniforms().addTexture(2, std::move(colorTexture));
+    cube->getUniforms().addTexture(3, std::move(maskTexture));
+    cube->getUniforms().addTexture(4, std::move(normalMapTexture));
     
     colorTexture = std::make_shared<VulkanTexture>(TEXTURE_PATH, renderer->getDevice(), true);
     maskTexture = std::make_shared<VulkanTexture>(MASK_TEXTURE_PATH, renderer->getDevice(), false);
@@ -178,6 +186,7 @@ int main() {
     renderer->addModel(character);
     renderer->addModel(ground);
     renderer->addModel(skybox);
+    renderer->addModel(cube);
 
     auto lightPos = glm::vec3(0, 5, 10);
     auto lightDir = glm::vec3(0.0f, 0.5f, 0.8f);
@@ -284,6 +293,8 @@ int main() {
             character->rotation = glm::angleAxis(time * 0.2f * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             character->position = glm::vec3(0.0f, 0.5f, 0.0f);
 
+            cube->position = glm::vec3(3.0f, 0.5f, 0.0f);
+
             skybox->scale = glm::vec3(10.0f, 10.0f, 10.0f);
 
             ground->position = glm::vec3(0.0f, -0.05f, 0.0f);
@@ -291,6 +302,7 @@ int main() {
 
             auto& characterUniforms = character->getUniforms();
             auto& groundUniforms = ground->getUniforms();
+            auto& cubeUniforms = cube->getUniforms();
             
             auto& transforms = character->getMeshes()[0]->getBoneTransforms();
             for (size_t i = 0; i < transforms.size(); i++) {
@@ -310,6 +322,7 @@ int main() {
             glm::mat4 depthViewMatrix = glm::lookAt(lightPos, lightPos - lightDir, glm::vec3(0, 1, 0));
             
             characterUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
+            cubeUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
             groundUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
             
             renderer->drawFrame();
