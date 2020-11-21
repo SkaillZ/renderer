@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.make": "makefile",
+    "*.lua.dc": "lua",
+    "iostream": "cpp"
+  }
+}

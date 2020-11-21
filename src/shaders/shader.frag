@@ -16,6 +16,7 @@ layout(binding = 1) uniform Globals {
     vec3 viewPos;
     vec3 ambientColor;
     Light[MAX_LIGHTS] lights;
+    float normalIntensity;
 } globals;
 
 layout(binding = 2) uniform sampler2D albedoTex;

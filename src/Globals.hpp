@@ -20,4 +20,5 @@ struct Globals {
     alignas(16) glm::vec3 viewPos;
     alignas(16) glm::vec3 ambientColor;
     alignas(16) Light lights[MAX_LIGHTS];
+    alignas(16) float normalIntensity;
 };

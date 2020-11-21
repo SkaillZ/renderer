@@ -214,6 +214,8 @@ int main() {
     bool cameraTrackingActive = false;
     float currentCameraDistance = 0.0f;
     float cameraTrackingSpeed = 2.5f;
+
+    static float normalIntensity = 1.0f;
     
     try {
         while (!window->shouldClose()) {
@@ -251,6 +253,20 @@ int main() {
             if (window->getKey(GLFW_KEY_LEFT) || window->getKey(GLFW_KEY_A)) {
                 right += 1;
             }
+            if (window->getKey(GLFW_KEY_LEFT) || window->getKey(GLFW_KEY_A)) {
+                right += 1;
+            }
+            if (window->getKey(GLFW_KEY_X)) {
+                normalIntensity -= 5.f * deltaTime;
+                std::cout << "NormalIntensity: " << normalIntensity << std::endl;
+            }
+            if (window->getKey(GLFW_KEY_C)) {
+                normalIntensity += 5.f * deltaTime;
+                std::cout << "NormalIntensity: " << normalIntensity << std::endl;
+            }
+
+            normalIntensity = glm::clamp(normalIntensity, 0.01f, 15.0f);
+            renderer->getGlobals().normalIntensity = normalIntensity;
 
             cam.position += glm::rotate(glm::inverse(cam.rotation), glm::vec3(0.0f, 0.0f, forward * CAMERA_MOVE_SPEED)) * deltaTime;
             cam.position += glm::rotate(glm::inverse(cam.rotation), glm::vec3(right * CAMERA_MOVE_SPEED, 0.0f, 0.0f)) * deltaTime;

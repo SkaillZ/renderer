@@ -16,6 +16,7 @@ layout(binding = 1) uniform Globals {
     vec3 viewPos;
     vec3 ambientColor;
     Light[MAX_LIGHTS] lights;
+    float normalIntensity;
 } globals;
 
 layout(binding = 2) uniform sampler2D albedoTex;
@@ -38,6 +39,7 @@ void main() {
     vec3 normal = texture(normalMapTex, fragTexCoord).rgb;
     
     normal = normal * 2.0 - 1.0;
+    normal.z = normal.z * (1/globals.normalIntensity);
     normal = normalize(fragTbn * normal);
     
     float metallic = mgao.r;
