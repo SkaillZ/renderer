@@ -50,6 +50,7 @@ public:
 
     glm::vec2 getExtent() { return { swapChain->extent.width, swapChain->extent.height }; };
     
+    void recreateSwapChain(bool waitForEvent = false);
     void drawFrame();
     
 private:
@@ -75,7 +76,6 @@ private:
     void initVulkan();
     void cleanupSwapChain();
     void cleanup();
-    void recreateSwapChain();
     void createFramebuffers();
     void createModelPipelines();
     void createCommandBuffers();

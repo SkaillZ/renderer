@@ -326,6 +326,10 @@ VulkanDevice::SwapChainSupportDetails VulkanDevice::querySwapChainSupport(VkPhys
     return details;
 }
 
+VkSampleCountFlagBits VulkanDevice::getMsaaSamples() {
+    return maxMsaaSamples < userRequestedMsaaSamples ? maxMsaaSamples : userRequestedMsaaSamples;
+}
+
 VkSampleCountFlagBits VulkanDevice::getMaxMsaaSamples() {
     VkPhysicalDeviceProperties physicalDeviceProperties;
     vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);

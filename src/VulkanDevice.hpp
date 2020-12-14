@@ -27,6 +27,7 @@ public:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     
+    VkSampleCountFlagBits userRequestedMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
     VkSampleCountFlagBits maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
     
 #ifdef NDEBUG
@@ -57,6 +58,10 @@ public:
     
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+
+    VkSampleCountFlagBits getMsaaSamples();
+    int getUserRequestedMsaaSamples() { return (int) userRequestedMsaaSamples; }
+    void setUserRequestedMsaaSamples(int sampleCount) { userRequestedMsaaSamples = (VkSampleCountFlagBits) sampleCount; }
     
 private:
     static const std::vector<const char*> deviceExtensions;
@@ -74,5 +79,4 @@ private:
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
     VkSampleCountFlagBits getMaxMsaaSamples();
-    
 };

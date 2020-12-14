@@ -9,7 +9,7 @@
 class VulkanRenderPasses {
     
 public:
-    VulkanRenderPasses(VulkanDevice& vulkanDevice, VkFormat imageFormat, VkFormat depthFormat, VkSampleCountFlagBits msaaSamples);
+    VulkanRenderPasses(VulkanDevice& vulkanDevice, VkFormat imageFormat, VkFormat depthFormat);
     virtual ~VulkanRenderPasses();
     
     inline static const VkFormat SHADOWS_DEPTH_FORMAT = VK_FORMAT_D16_UNORM;
@@ -18,7 +18,6 @@ public:
     VkRenderPass shadowsRenderPass;
     VkRenderPass mainRenderPass;
     
-    VkSampleCountFlagBits msaaSamples;
 private:
     VkFormat imageFormat;
     VkFormat depthFormat;

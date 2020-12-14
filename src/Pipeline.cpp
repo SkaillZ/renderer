@@ -82,7 +82,7 @@ Pipeline::Pipeline(VulkanRenderPasses& renderPass, VkDescriptorSetLayout descrip
     VkPipelineMultisampleStateCreateInfo multisampling = {};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = shadowPipeline ? VK_SAMPLE_COUNT_1_BIT : renderPass.msaaSamples;
+    multisampling.rasterizationSamples = shadowPipeline ? VK_SAMPLE_COUNT_1_BIT : renderPass.vulkanDevice.getMsaaSamples();
     
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;

@@ -54,9 +54,9 @@ void Renderer::cleanup() {
     vulkanDevice.reset();
 }
 
-void Renderer::recreateSwapChain() {
+void Renderer::recreateSwapChain(bool waitForEvent) {
     int width = 0, height = 0;
-    while (width == 0 || height == 0) {
+    while ((width == 0 || height == 0) && waitForEvent) {
         glfwGetFramebufferSize(window, &width, &height);
         glfwWaitEvents();
     }
@@ -73,7 +73,7 @@ void Renderer::recreateSwapChain() {
 
 void Renderer::createFramebuffers() {
     swapChain = std::make_unique<VulkanSwapchain>(*vulkanDevice);
-    renderPass = std::make_unique<VulkanRenderPasses>(*vulkanDevice, swapChain->imageFormat, swapChain->depthFormat, vulkanDevice->maxMsaaSamples);
+    renderPass = std::make_unique<VulkanRenderPasses>(*vulkanDevice, swapChain->imageFormat, swapChain->depthFormat);
     framebuffer = std::make_unique<VulkanFramebuffer>(*vulkanDevice, *renderPass, *swapChain, swapChain->extent);
 }
 
@@ -233,7 +233,7 @@ void Renderer::drawFrame() {
         imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapChain();
+        recreateSwapChain(true);
         return;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -279,7 +279,7 @@ void Renderer::drawFrame() {
     
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
         framebufferResized = false;
-        recreateSwapChain();
+        recreateSwapChain(true);
     } else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }

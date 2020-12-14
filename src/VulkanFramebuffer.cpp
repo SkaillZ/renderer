@@ -36,7 +36,7 @@ VulkanFramebuffer::~VulkanFramebuffer() {
 void VulkanFramebuffer::createColorResources() {
     VkFormat colorFormat = swapchain.imageFormat;
     
-    VulkanUtils::createImage(vulkanDevice.device, vulkanDevice.physicalDevice, extent.width, extent.height, 1, false, vulkanDevice.maxMsaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
+    VulkanUtils::createImage(vulkanDevice.device, vulkanDevice.physicalDevice, extent.width, extent.height, 1, false, vulkanDevice.getMsaaSamples(), colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
     colorImageView = VulkanUtils::createImageView(vulkanDevice.device, colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     
     VulkanUtils::transitionImageLayout(vulkanDevice, colorImage, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1);
@@ -44,7 +44,7 @@ void VulkanFramebuffer::createColorResources() {
 
 void VulkanFramebuffer::createDepthResources() {
     VkFormat depthFormat = swapchain.depthFormat;
-    VulkanUtils::createImage(vulkanDevice.device, vulkanDevice.physicalDevice, extent.width, extent.height, 1, false, vulkanDevice.maxMsaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+    VulkanUtils::createImage(vulkanDevice.device, vulkanDevice.physicalDevice, extent.width, extent.height, 1, false, vulkanDevice.getMsaaSamples(), depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
     depthImageView = VulkanUtils::createImageView(vulkanDevice.device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
     
     VulkanUtils::transitionImageLayout(vulkanDevice, depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);

@@ -1,7 +1,7 @@
 #include "VulkanRenderPasses.hpp"
 
-VulkanRenderPasses::VulkanRenderPasses(VulkanDevice& vulkanDevice, VkFormat imageFormat, VkFormat depthFormat, VkSampleCountFlagBits msaaSamples)
-        : vulkanDevice(vulkanDevice), msaaSamples(msaaSamples), imageFormat(imageFormat), depthFormat(depthFormat) {
+VulkanRenderPasses::VulkanRenderPasses(VulkanDevice& vulkanDevice, VkFormat imageFormat, VkFormat depthFormat)
+        : vulkanDevice(vulkanDevice), imageFormat(imageFormat), depthFormat(depthFormat) {
     
     createShadowsRenderPass();
     createMainRenderPass();
@@ -15,7 +15,7 @@ VulkanRenderPasses::~VulkanRenderPasses() {
 void VulkanRenderPasses::createMainRenderPass() {
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = imageFormat;
-    colorAttachment.samples = msaaSamples;
+    colorAttachment.samples = vulkanDevice.getMsaaSamples();
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -25,7 +25,7 @@ void VulkanRenderPasses::createMainRenderPass() {
     
     VkAttachmentDescription depthAttachment = {};
     depthAttachment.format = depthFormat;
-    depthAttachment.samples = msaaSamples;
+    depthAttachment.samples = vulkanDevice.getMsaaSamples();
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;

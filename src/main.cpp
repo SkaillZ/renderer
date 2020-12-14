@@ -37,6 +37,7 @@ struct CameraWaypoint {
 };
 
 static auto window = std::make_shared<Window>(WIDTH, HEIGHT);
+static int maxMsaaSamples = 64;
 
 void framebufferResizeCallback(GLFWwindow* nativeWindow, int width, int height) {
     auto renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(nativeWindow));
@@ -44,7 +45,9 @@ void framebufferResizeCallback(GLFWwindow* nativeWindow, int width, int height) 
 }
 
 void keyPressedCallback(GLFWwindow* nativeWindow, int key, int scancode, int action, int mods) {
-    if (action != GLFW_PRESS)
+    auto renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(nativeWindow));
+
+    if (action != GLFW_RELEASE)
         return;
 
     if (key == GLFW_KEY_ESCAPE) {
@@ -56,6 +59,16 @@ void keyPressedCallback(GLFWwindow* nativeWindow, int key, int scancode, int act
         else {
             window->enterFullscreen();
         }
+    } else if (key == GLFW_KEY_M) {
+        auto samples = glm::clamp(renderer->getDevice().getUserRequestedMsaaSamples() * 2, 1, maxMsaaSamples);
+        renderer->getDevice().setUserRequestedMsaaSamples(samples);
+        std::cout << "Set MSAA sample count to " << samples << std::endl;
+        renderer->recreateSwapChain();
+    } else if (key == GLFW_KEY_N) {
+        auto samples = glm::clamp(renderer->getDevice().getUserRequestedMsaaSamples() / 2, 1, maxMsaaSamples);
+        renderer->getDevice().setUserRequestedMsaaSamples(samples);
+        std::cout << "Set MSAA sample count to " << samples << std::endl;
+        renderer->recreateSwapChain();
     }
 }
 
@@ -113,6 +126,7 @@ int main() {
     
     auto renderer = std::make_unique<Renderer>(window->getNativeWindowPointer());
     glfwSetWindowUserPointer(window->getNativeWindowPointer(), renderer.get());
+    maxMsaaSamples = renderer->getDevice().maxMsaaSamples;
     
     auto colorTexture = std::make_shared<VulkanTexture>(TEXTURE_PATH, renderer->getDevice(), true);
     auto maskTexture = std::make_shared<VulkanTexture>(MASK_TEXTURE_PATH, renderer->getDevice(), false);
