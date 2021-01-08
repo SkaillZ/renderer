@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <unordered_map>
+#include <array>
 
 #include "VulkanDevice.hpp"
 #include "VulkanBuffer.hpp"
@@ -29,11 +30,14 @@ public:
     MeshBoneData& getBoneData(std::string boneName) { return boneData[boneName]; }
     std::unordered_map<std::string, MeshBoneData>& getBoneData() { return boneData; }
     std::vector<glm::mat4>& getBoneTransforms() { return boneTransforms; }
+    std::vector<std::array<glm::vec3, 3>> getAllTriangles();
+
+    void updateVertexBuffer();
     
+    std::vector<Vertex> vertices;
 private:
     VulkanDevice& device;
 
-    std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::unordered_map<std::string, MeshBoneData> boneData;
     

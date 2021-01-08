@@ -1,7 +1,7 @@
 appname := app
 
 CXX := g++
-CXXFLAGS := -Wall -g -std=c++17 -I lib
+CXXFLAGS := -Wall -g -std=c++17 -O3 -I lib
 LINKFLAGS := /usr/local/lib/libglfw.dylib /usr/local/lib/libvulkan.dylib /usr/local/lib/libassimp.dylib
 
 srcfiles      := $(shell find ./src -maxdepth 1 -name "*.cpp")

@@ -10,6 +10,7 @@ struct PipelineSettings {
     bool depthWrite;
     VkCullModeFlags cullMode;
     VkCompareOp depthCompareOp;
+    VkPrimitiveTopology topology;
 };
 
 class PipelineSettingsBuilder {
@@ -49,6 +50,11 @@ public:
         m_depthCompareOp = depthCompareOp;
         return *this;
     }
+
+    PipelineSettingsBuilder& topology(VkPrimitiveTopology topology) {
+        m_topology = topology;
+        return *this;
+    }
     
     std::shared_ptr<PipelineSettings> build() {
         auto settings = std::make_shared<PipelineSettings>();
@@ -59,6 +65,7 @@ public:
         settings->depthWrite = m_depthWrite;
         settings->cullMode = m_cullMode;
         settings->depthCompareOp = m_depthCompareOp;
+        settings->topology = m_topology;
         return settings;
     }
     
@@ -70,5 +77,6 @@ private:
     bool m_depthWrite = true;
     VkCullModeFlags m_cullMode = VK_CULL_MODE_BACK_BIT;
     VkCompareOp m_depthCompareOp = VK_COMPARE_OP_LESS;
+    VkPrimitiveTopology m_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     
 };

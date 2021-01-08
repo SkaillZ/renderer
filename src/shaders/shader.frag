@@ -105,16 +105,4 @@ void main() {
     vec3 color = ambient + Lo;
     
     outColor = vec4(color, 1.0);
-    
-    // Old lighting
-    
-    /*
-    // Ambient
-    vec3 ambient = globals.ambientColor;
-    vec3 lighting = ambient * albedo;
-    for (int i = 0; i < MAX_LIGHTS; i++) {
-        lighting += calculateLight(globals.lights[i], fragPos, globals.viewPos, albedo, normal, metallic, 1 - roughness, i == 0, shadowMapTex, fragNormal, fragShadowCoord);
-    }
-    
-    outColor = vec4(lighting, color.a);*/
 }

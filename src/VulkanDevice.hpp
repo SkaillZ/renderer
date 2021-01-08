@@ -27,13 +27,13 @@ public:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     
-    VkSampleCountFlagBits userRequestedMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkSampleCountFlagBits maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkSampleCountFlagBits userRequestedMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
+    VkSampleCountFlagBits maxMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
     
 #ifdef NDEBUG
     bool enableValidationLayers = false;
 #else
-    bool enableValidationLayers = true;
+    bool enableValidationLayers = false;
 #endif
     
     struct QueueFamilyIndices {

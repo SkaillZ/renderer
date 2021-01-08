@@ -33,6 +33,22 @@ void Mesh::createVertexBuffer() {
     device.freeBuffer(stagingBuffer);
 }
 
+void Mesh::updateVertexBuffer() {
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    
+    VulkanBuffer stagingBuffer;
+    device.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer);
+    
+    void* data;
+    vkMapMemory(device.device, stagingBuffer.memory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t) bufferSize);
+    vkUnmapMemory(device.device, stagingBuffer.memory);
+    
+    VulkanUtils::copyBuffer(device, stagingBuffer.buffer, vertexBuffer.buffer, bufferSize);
+    
+    device.freeBuffer(stagingBuffer);
+}
+
 void Mesh::createIndexBuffer() {
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
     
@@ -116,4 +132,16 @@ void Mesh::calculateTangents() {
         float w = (glm::dot(c, bitangent) < 0) ? 1.0f : -1.0f;
         vertices[i].tangent = glm::vec4(t.x, t.y, t.z, w);
     }
+}
+
+std::vector<std::array<glm::vec3, 3>> Mesh::getAllTriangles() {
+    std::vector<std::array<glm::vec3, 3>> triangles;
+    triangles.resize(indices.size() / 3);
+    for (size_t i = 0; i < indices.size() / 3; i++) {
+        triangles[i][0] = vertices[indices[i*3]].pos;
+        triangles[i][1] = vertices[indices[i*3+1]].pos;
+        triangles[i][2] = vertices[indices[i*3+2]].pos;
+    }
+
+    return triangles;
 }

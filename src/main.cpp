@@ -10,9 +10,11 @@
 #include "ModelLoader.hpp"
 #include "Window.hpp"
 #include "Splines.hpp"
+#include "KdTree.hpp"
 
 const std::string MECH_PATH = "models/model.dae";
 const std::string CUBE_PATH = "models/cube.obj";
+const std::string SPHERE_PATH = "models/sphere.obj";
 const std::string TERRAIN_PATH = "models/terrain.obj";
 
 const std::string TEXTURE_PATH = "textures/default_albedo.jpg";
@@ -148,18 +150,31 @@ int main() {
     auto characterUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
     auto skyboxUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 1, false);
     auto groundUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
-    auto cubeUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 3, true);
-    
-    auto skinnedPipeline = PipelineSettingsBuilder()
-        .vertexShader("shaders/skinning.vert.spv")
-        .shadowVertexShader("shaders/shadowpass_skinned.vert.spv")
-        .fragmentShader("shaders/shader.frag.spv")
-        .build();
+    auto kdTreeUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 0, true);
+    auto hitTriangleUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 0, true);
+    auto hitIndicatorUniforms = std::make_shared<Uniforms<LocalTransform>>(renderer->getDevice(), 0, true);
     
     auto staticPipeline = PipelineSettingsBuilder()
         .vertexShader("shaders/static.vert.spv")
         .shadowVertexShader("shaders/shadowpass.vert.spv")
         .fragmentShader("shaders/shader.frag.spv")
+        .build();
+
+    auto linesPipeline = PipelineSettingsBuilder()
+        .vertexShader("shaders/static.vert.spv")
+        .fragmentShader("shaders/bluesolid.frag.spv")
+        .topology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+        .build();
+
+    auto hitTrianglePipeline = PipelineSettingsBuilder()
+        .vertexShader("shaders/static.vert.spv")
+        .fragmentShader("shaders/redsolid.frag.spv")
+        .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL) // Draw the hit triangle on top
+        .build();
+
+    auto hitIndicatorPipeline = PipelineSettingsBuilder()
+        .vertexShader("shaders/static.vert.spv")
+        .fragmentShader("shaders/greensolid.frag.spv")
         .build();
     
     auto skyboxPipeline = PipelineSettingsBuilder()
@@ -173,19 +188,11 @@ int main() {
     auto character = ModelLoader::fromFile(MECH_PATH, renderer->getDevice(), staticPipeline, std::move(characterUniforms));
     auto skybox = ModelLoader::fromFile(CUBE_PATH, renderer->getDevice(), skyboxPipeline, std::move(skyboxUniforms));
     auto ground = ModelLoader::fromFile(TERRAIN_PATH, renderer->getDevice(), staticPipeline, std::move(groundUniforms));
-    auto cube = ModelLoader::fromFile(CUBE_PATH, renderer->getDevice(), staticPipeline, std::move(cubeUniforms));
+    auto hitIndicator = ModelLoader::fromFile(SPHERE_PATH, renderer->getDevice(), hitIndicatorPipeline, std::move(hitIndicatorUniforms));
     
     character->getUniforms().addTexture(2, std::move(colorTexture));
     character->getUniforms().addTexture(3, std::move(maskTexture));
     character->getUniforms().addTexture(4, std::move(normalMapTexture));
-
-    colorTexture = std::make_shared<VulkanTexture>(TEXTURE_PATH, renderer->getDevice(), true);
-    maskTexture = std::make_shared<VulkanTexture>(MASK_TEXTURE_PATH, renderer->getDevice(), false);
-    normalMapTexture = std::make_shared<VulkanTexture>(NORMAL_MAP_PATH, renderer->getDevice(), false);
-
-    cube->getUniforms().addTexture(2, std::move(colorTexture));
-    cube->getUniforms().addTexture(3, std::move(maskTexture));
-    cube->getUniforms().addTexture(4, std::move(normalMapTexture));
     
     colorTexture = std::make_shared<VulkanTexture>(TEXTURE_PATH, renderer->getDevice(), true);
     maskTexture = std::make_shared<VulkanTexture>(MASK_TEXTURE_PATH, renderer->getDevice(), false);
@@ -195,12 +202,29 @@ int main() {
     ground->getUniforms().addTexture(3, std::move(groundMaskTexture));
     ground->getUniforms().addTexture(4, std::move(groundNormalMapTexture));
 
-    skybox->getUniforms().addTexture(2, std::move(skyboxTexture));    
+    skybox->getUniforms().addTexture(2, std::move(skyboxTexture));
+
+    character->position = glm::vec3(0.0f, 0.5f, 0.0f);
+
+    skybox->scale = glm::vec3(10.0f, 10.0f, 10.0f);
+
+    ground->position = glm::vec3(0.0f, -0.05f, 0.0f);
+    ground->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+
+    std::cout << "Building k-d tree..." << std::endl;
+    auto kdTree = std::make_shared<KdTree>(std::vector<std::shared_ptr<Model>> { character, ground });
+    std::cout << "k-d tree build finished. Creating visual model..." << std::endl;
+
+    auto kdTreeModel = kdTree->createLineModelForBoundingBoxes(renderer->getDevice(), linesPipeline, std::move(kdTreeUniforms));
+    auto kdTreeTriModel = kdTree->createHitTriangleModel(renderer->getDevice(), hitTrianglePipeline, std::move(hitTriangleUniforms));
+    std::cout << "Creating visual model finished." << std::endl;
 
     renderer->addModel(character);
     renderer->addModel(ground);
     renderer->addModel(skybox);
-    renderer->addModel(cube);
+    renderer->addModel(kdTreeModel);
+    renderer->addModel(kdTreeTriModel);
+    renderer->addModel(hitIndicator);
 
     auto lightPos = glm::vec3(0, 5, 10);
     auto lightDir = glm::vec3(0.0f, 0.5f, 0.8f);
@@ -320,29 +344,8 @@ int main() {
                 cam.rotation = waypoint.rotation;
             }
 
-            character->rotation = glm::angleAxis(time * 0.2f * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            character->position = glm::vec3(0.0f, 0.5f, 0.0f);
-
-            cube->position = glm::vec3(3.0f, 0.5f, 0.0f);
-
-            skybox->scale = glm::vec3(10.0f, 10.0f, 10.0f);
-
-            ground->position = glm::vec3(0.0f, -0.05f, 0.0f);
-            ground->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-
             auto& characterUniforms = character->getUniforms();
             auto& groundUniforms = ground->getUniforms();
-            auto& cubeUniforms = cube->getUniforms();
-            
-            auto& transforms = character->getMeshes()[0]->getBoneTransforms();
-            for (size_t i = 0; i < transforms.size(); i++) {
-                assert(i < MAX_BONES);
-                characterUniforms.ubo.boneTransforms[i] = transforms[i];
-            }
-            
-            for (size_t i = transforms.size(); i < MAX_BONES; i++) {
-                characterUniforms.ubo.boneTransforms[i] = glm::mat4(1.0f);
-            }
             
             // -- Shadow map uniforms --
             // Keep depth range as small as possible for better shadow map precision
@@ -352,8 +355,27 @@ int main() {
             glm::mat4 depthViewMatrix = glm::lookAt(lightPos, lightPos - lightDir, glm::vec3(0, 1, 0));
             
             characterUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
-            cubeUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
             groundUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
+
+            // KdTree raycast
+            glm::vec3 direction = glm::rotate(cam.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+            direction.x *= -1;
+            direction.y *= -1;
+            glm::vec3 origin = -cam.position;
+            float maxDistance = 10.0f;
+            auto hit = kdTree->raycast(origin, direction, maxDistance);
+
+            kdTreeTriModel->getMeshes()[0]->vertices[0].pos = hit.triangle[0];
+            kdTreeTriModel->getMeshes()[0]->vertices[1].pos = hit.triangle[1];
+            kdTreeTriModel->getMeshes()[0]->vertices[2].pos = hit.triangle[2];
+            kdTreeTriModel->getMeshes()[0]->updateVertexBuffer();
+
+            hitIndicator->position = hit.distance != INFINITY ? hit.point : origin +
+             direction * maxDistance;
+
+            std::cout << "t: " << hit.triangle[0].x << ", " << hit.triangle[0].y << ", " << hit.triangle[0].z << std::endl;
+            std::cout << hit.triangle[1].x << ", " << hit.triangle[1].y << ", " << hit.triangle[1].z << std::endl;
+            std::cout << hit.triangle[2].x << ", " << hit.triangle[2].y << ", " << hit.triangle[2].z << std::endl;
             
             renderer->drawFrame();
         }
