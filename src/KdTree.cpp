@@ -6,7 +6,7 @@
 
 KdTree::KdTree(std::vector<std::shared_ptr<Model>> models)
 {
-  std::vector<KdTreeTriangleData> triDataList;
+  std::vector<KdTreeTriangleBuildData> triDataList;
   for (auto& model : models) {
     for (auto& mesh : model->getMeshes()) {
       // Create the model matrix to transform triangles with
@@ -24,47 +24,49 @@ KdTree::KdTree(std::vector<std::shared_ptr<Model>> models)
           tri[i].z = transformedTriangle.z;
         }
 
-        KdTreeTriangleData triData;
+        KdTreeTriangleBuildData triData;
         triData.triangle = tri;
-        triData.mesh = mesh;
         triData.bounds = getBoundingBox(tri);
         triDataList.push_back(triData);
       }
     }
   }
-
+  
   root = new KdTreeNode();
   buildSubtree(root, triDataList, MAX_DEPTH);
 }
 
 KdTreeRaycastHit KdTree::raycast(glm::vec3 originPoint, glm::vec3 direction, float maxDistance) {
-  //std::cout << "raycast origin: " << originPoint.x << ", " << originPoint.y << ", " << originPoint.z << std::endl;
-  //std::cout << "direction: " << direction.x << ", " << direction.y << ", " << direction.z << std::endl;
+
   KdTreeRaycastHit hit = {};
   hit.distance = INFINITY;
   raycastVisit(root, originPoint, direction, maxDistance, hit);
   return hit;
 }
 
-void KdTree::buildSubtree(KdTreeNode* current, std::vector<KdTreeTriangleData> triangles, int depth) {
-  current->dimension = getLongestDimension(getBoundingBox(triangles));
-  current->splitPlane = getMedianInDimension(triangles, current->dimension);
+void KdTree::buildSubtree(KdTreeNode* current, std::vector<KdTreeTriangleBuildData> triangles, int depth) {
   if (triangles.size() <= MAX_PRIMITIVES_PER_LEAF || depth == 0) {
     // Allocate a new vector containing the triangles on the heap to ensure that nodes only
     // store a pointer instead of the vector header containing multiple pointers, length etc.
-    current->data = new std::vector<KdTreeTriangleData>(triangles);
+    current->data = new std::vector<KdTreeTriangle>(triangles.size());
+
+    for (int i = 0; i < triangles.size(); i++) {
+      (*current->data)[i] = triangles[i].triangle;
+    }
     return;
-    
   }
 
-  std::vector<KdTreeTriangleData> leftTriangles;
-  std::vector<KdTreeTriangleData> rightTriangles;
+  current->dimension = getLongestDimension(getBoundingBox(triangles));
+  current->splitPlane = getMedianInDimension(triangles, current->dimension);
+
+  std::vector<KdTreeTriangleBuildData> leftTriangles;
+  std::vector<KdTreeTriangleBuildData> rightTriangles;
   splitTrianglesByPlane(current->dimension, current->splitPlane, triangles, leftTriangles, rightTriangles);
 
-  current->leftSuccessor = new KdTreeNode();
-  buildSubtree(current->leftSuccessor, leftTriangles, depth - 1);
-  current->rightSuccessor = new KdTreeNode();
-  buildSubtree(current->rightSuccessor, rightTriangles, depth - 1);
+  current->successors[0] = new KdTreeNode();
+  buildSubtree(current->successors[0], leftTriangles, depth - 1);
+  current->successors[1] = new KdTreeNode();
+  buildSubtree(current->successors[1], rightTriangles, depth - 1);
 }
 
 void KdTree::raycastVisit(KdTreeNode* current, glm::vec3 originPoint, glm::vec3 direction, float maxDistance, KdTreeRaycastHit& hit) {
@@ -73,36 +75,30 @@ void KdTree::raycastVisit(KdTreeNode* current, glm::vec3 originPoint, glm::vec3 
 
   int dimension = current->dimension;
   int first = originPoint[dimension] > current->splitPlane;
-  auto firstChild = first ? current->rightSuccessor : current->leftSuccessor;
-  auto secondChild = first ? current->leftSuccessor : current->rightSuccessor;
-
-  //std::cout << "hit node: dimension " << current->dimension << ", split plane " << current->splitPlane << std::endl;
 
   if (current->isLeaf()) {
-    //std::cout << "hit leaf node: dimension " << current->dimension << ", split plane " << current->splitPlane << ", tri count " << current->data->size() << "!!! " << std::endl;
     auto& trianglesInNode = *current->data;
     for (auto& triangle: trianglesInNode) {
-      float t = intersectTriangle(triangle.triangle, originPoint, direction, maxDistance);
-      if (t >= 0 && t <= hit.distance) {
-        hit.triangle = triangle.triangle;
+      float t = intersectTriangle(triangle, originPoint, direction, maxDistance);
+      if (t >= 0 && t <= hit.distance && t <= maxDistance) {
+        hit.triangle = triangle;
         hit.point = originPoint + direction * t;
         hit.distance = t;
-        hit.mesh = triangle.mesh;
       }
     }
   }
 
   if (direction[dimension] == 0.0f) {
     // line segment parallel to splitting plane, visit near side only
-    raycastVisit(firstChild, originPoint, direction, maxDistance, hit);
+    raycastVisit(current->successors[first], originPoint, direction, maxDistance, hit);
   } else {
     // find t value for intersection
     float t = (current->splitPlane - originPoint[dimension]) / direction[dimension];
     if (0.0f <= t && t < maxDistance) {
-      raycastVisit(firstChild, originPoint, direction, t, hit);
-      raycastVisit(secondChild, originPoint + t * direction, direction, maxDistance - t, hit);
+      raycastVisit(current->successors[first], originPoint, direction, maxDistance, hit);
+      raycastVisit(current->successors[first^1], originPoint, direction, maxDistance, hit);
     } else {
-      raycastVisit(firstChild, originPoint, direction, maxDistance, hit);
+      raycastVisit(current->successors[first], originPoint, direction, maxDistance, hit);
     }
   }
 }
@@ -122,7 +118,7 @@ void KdTree::getMinMaxInDimension(KdTreeTriangle triangle, int dimension, float&
     max = triangle[2][dimension];
 }
 
-void KdTree::getMinMaxInDimension(std::vector<KdTreeTriangleData>& triangles, int dimension, float& min, float& max) {
+void KdTree::getMinMaxInDimension(std::vector<KdTreeTriangleBuildData>& triangles, int dimension, float& min, float& max) {
   for (auto& triangle : triangles) {
     float localMin, localMax;
     getMinMaxInDimension(triangle.triangle, dimension, localMin, localMax);
@@ -138,7 +134,8 @@ KdTreeBoundingBox KdTree::getBoundingBox(KdTreeTriangle triangle) {
   glm::vec3 max(-INFINITY);
 
   for (int d = 0; d < 3; d++) {
-    float localMin, localMax;
+    float localMin = INFINITY;
+    float localMax = -INFINITY;
     getMinMaxInDimension(triangle, d, localMin, localMax);
     if (localMin < min[d])
       min[d] = localMin;
@@ -148,7 +145,7 @@ KdTreeBoundingBox KdTree::getBoundingBox(KdTreeTriangle triangle) {
   return KdTreeBoundingBox::fromMinMax(min, max);
 }
 
-KdTreeBoundingBox KdTree::getBoundingBox(std::vector<KdTreeTriangleData>& triangles) {
+KdTreeBoundingBox KdTree::getBoundingBox(std::vector<KdTreeTriangleBuildData>& triangles) {
   glm::vec3 min(INFINITY);
   glm::vec3 max(-INFINITY);
 
@@ -172,10 +169,18 @@ KdTreeBoundingBox KdTree::getBoundingBox(std::vector<KdTreeTriangleData>& triang
 
 std::vector<KdTreeBoundingBox> KdTree::createNodeBoundingBoxes(KdTreeNode* current) {
   if (current->isLeaf()) {
-    return std::vector<KdTreeBoundingBox> { getBoundingBox(*current->data) };
+
+    std::vector<KdTreeTriangleBuildData> triangleData;
+    for (auto triangle: (*current->data)) {
+      KdTreeTriangleBuildData buildData;
+      buildData.triangle = triangle;
+      buildData.bounds = getBoundingBox(triangle);
+      triangleData.push_back(buildData);
+    }
+    return std::vector<KdTreeBoundingBox> { getBoundingBox(triangleData) };
   }
-  auto leftBoundingBoxes = createNodeBoundingBoxes(current->leftSuccessor);
-  auto rightBoundingBoxes = createNodeBoundingBoxes(current->rightSuccessor);
+  auto leftBoundingBoxes = createNodeBoundingBoxes(current->successors[0]);
+  auto rightBoundingBoxes = createNodeBoundingBoxes(current->successors[1]);
 
   std::vector<KdTreeBoundingBox> combinedBounds;
   combinedBounds.insert(combinedBounds.end(), leftBoundingBoxes.begin(), leftBoundingBoxes.end());
@@ -198,6 +203,7 @@ std::vector<KdTreeBoundingBox> KdTree::createNodeBoundingBoxes(KdTreeNode* curre
       max.z = boundingBox.max.z;
   }
 
+
   combinedBounds.push_back(KdTreeBoundingBox::fromMinMax(min, max));
 
   // The bounding box of an outer node is the combined bounding box of its inner nodes
@@ -205,16 +211,12 @@ std::vector<KdTreeBoundingBox> KdTree::createNodeBoundingBoxes(KdTreeNode* curre
 }
 
 int KdTree::getLongestDimension(KdTreeBoundingBox bounds) {
-  if (bounds.size.x >= bounds.size.y && bounds.size.x >= bounds.size.z) {
-    return 0;
-  }
-  if (bounds.size.y >= bounds.size.z) {
-    return 1;
-  }
-  return 2;
+  return bounds.size.x >= bounds.size.y
+    ? (bounds.size.x >= bounds.size.z ? 0 : 2)
+    : (bounds.size.y >= bounds.size.z ? 1 : 2);
 }
 
-float KdTree::getMedianInDimension(std::vector<KdTreeTriangleData>& triangles, int dimension) {
+float KdTree::getMedianInDimension(std::vector<KdTreeTriangleBuildData>& triangles, int dimension) {
   std::vector<float> valuesInDimension(triangles.size());
   for (int i = 0; i < triangles.size(); i++) {
     valuesInDimension[i] = triangles[i].bounds.center[dimension];
@@ -228,9 +230,9 @@ float KdTree::getMedianInDimension(std::vector<KdTreeTriangleData>& triangles, i
 void KdTree::splitTrianglesByPlane(
   int dimension,
   float splitPlane,
-  std::vector<KdTreeTriangleData>& inTriangles,
-  std::vector<KdTreeTriangleData>& outLeftTriangles,
-  std::vector<KdTreeTriangleData>& outRightTriangles
+  std::vector<KdTreeTriangleBuildData>& inTriangles,
+  std::vector<KdTreeTriangleBuildData>& outLeftTriangles,
+  std::vector<KdTreeTriangleBuildData>& outRightTriangles
 ) {
   for (auto triangle: inTriangles) {
     bool isSplitPlaneInBounds = splitPlane < triangle.bounds.max[dimension] && splitPlane > triangle.bounds.min[dimension];
@@ -245,6 +247,7 @@ void KdTree::splitTrianglesByPlane(
 }
 
 float KdTree::intersectTriangle(KdTreeTriangle& triangle, glm::vec3 point, glm::vec3 direction, float maxDistance) {
+
   // Compute the normal of the triangle
 	glm::vec3 AB = triangle[1] - triangle[0];
 	glm::vec3 AC = triangle[2] - triangle[0];
@@ -338,6 +341,7 @@ std::shared_ptr<Model> KdTree::createLineModelForBoundingBoxes(
 
   std::unordered_map<std::string, Animation> emptyAnimations;
   return std::make_shared<Model>(meshes, emptyAnimations, pipelineSettings, uniforms, nullptr, device);
+
 }
 
 std::shared_ptr<Model> KdTree::createHitTriangleModel(
@@ -356,18 +360,3 @@ std::shared_ptr<Model> KdTree::createHitTriangleModel(
   return std::make_shared<Model>(meshes, emptyAnimations, pipelineSettings, uniforms, nullptr, device);
 }
 
-std::shared_ptr<Model> KdTree::createRayModel(
-  VulkanDevice& device,
-  std::shared_ptr<PipelineSettings> pipelineSettings, 
-  std::shared_ptr<Uniforms<LocalTransform>> uniforms
-) {
-  std::vector<Vertex> vertices = { Vertex(), Vertex()};
-  std::vector<uint32_t> indices = { 0, 1 };
-
-  std::unordered_map<std::string, MeshBoneData> emptyBoneData;
-  std::vector<std::shared_ptr<Mesh>> meshes;
-  meshes.push_back(std::make_shared<Mesh>(device, vertices, indices, emptyBoneData));
-
-  std::unordered_map<std::string, Animation> emptyAnimations;
-  return std::make_shared<Model>(meshes, emptyAnimations, pipelineSettings, uniforms, nullptr, device);
-}

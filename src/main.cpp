@@ -40,6 +40,7 @@ struct CameraWaypoint {
 
 static auto window = std::make_shared<Window>(WIDTH, HEIGHT);
 static int maxMsaaSamples = 64;
+static bool rayLocked = false;
 
 void framebufferResizeCallback(GLFWwindow* nativeWindow, int width, int height) {
     auto renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(nativeWindow));
@@ -71,6 +72,9 @@ void keyPressedCallback(GLFWwindow* nativeWindow, int key, int scancode, int act
         renderer->getDevice().setUserRequestedMsaaSamples(samples);
         std::cout << "Set MSAA sample count to " << samples << std::endl;
         renderer->recreateSwapChain();
+    }
+    else if (key == GLFW_KEY_L) {
+        rayLocked = !rayLocked;
     }
 }
 
@@ -358,25 +362,31 @@ int main() {
             groundUniforms.ubo.lightSpace = depthProjectionMatrix * depthViewMatrix;
 
             // KdTree raycast
-            glm::vec3 direction = glm::rotate(cam.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-            direction.x *= -1;
-            direction.y *= -1;
+            glm::vec3 direction = glm::vec3(0.0f, 0.0f, 1.0f) * cam.rotation;
             glm::vec3 origin = -cam.position;
             float maxDistance = 10.0f;
+
+            auto startTime = std::chrono::high_resolution_clock::now();
+
             auto hit = kdTree->raycast(origin, direction, maxDistance);
 
-            kdTreeTriModel->getMeshes()[0]->vertices[0].pos = hit.triangle[0];
-            kdTreeTriModel->getMeshes()[0]->vertices[1].pos = hit.triangle[1];
-            kdTreeTriModel->getMeshes()[0]->vertices[2].pos = hit.triangle[2];
-            kdTreeTriModel->getMeshes()[0]->updateVertexBuffer();
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto ms = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 
-            hitIndicator->position = hit.distance != INFINITY ? hit.point : origin +
-             direction * maxDistance;
+            if (!rayLocked) {
+                std::cout << "Raycast took " << ms << " microseconds. Hit distance: " << hit.distance << std::endl;
 
-            std::cout << "t: " << hit.triangle[0].x << ", " << hit.triangle[0].y << ", " << hit.triangle[0].z << std::endl;
-            std::cout << hit.triangle[1].x << ", " << hit.triangle[1].y << ", " << hit.triangle[1].z << std::endl;
-            std::cout << hit.triangle[2].x << ", " << hit.triangle[2].y << ", " << hit.triangle[2].z << std::endl;
-            
+                auto triMesh = kdTreeTriModel->getMeshes()[0];
+
+                triMesh->vertices[0].pos = hit.triangle[0];
+                triMesh->vertices[1].pos = hit.triangle[1];
+                triMesh->vertices[2].pos = hit.triangle[2];
+
+                triMesh->updateVertexBuffer();
+
+                hitIndicator->position = hit.distance != INFINITY ? hit.point : origin + direction * maxDistance;
+            }
+
             renderer->drawFrame();
         }
         renderer->waitForDeviceIdle();
